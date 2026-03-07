@@ -1,0 +1,1 @@
+A network intrusion detection system built from raw sockets in python. captures packets, parses protocol headers byte-by-byte, detects port scans, syn floods, and arp spoofing using a custom rules engine.
