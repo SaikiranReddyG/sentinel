@@ -84,7 +84,10 @@ class SynFloodDetector:
 
         state['count'] += 1
         elapsed = now - state['window_start']
-        if elapsed <= 0:
+
+        # Need at least `rate` packets AND measurable elapsed time before
+        # computing rate — avoids false positives from burst scheduling
+        if state['count'] < self._rate or elapsed <= 0:
             return []
 
         current_rate = state['count'] / elapsed
