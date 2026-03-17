@@ -1,0 +1,119 @@
+rules:
+
+  # -----------------------------------------------------------------------
+  # TCP rules
+  # -----------------------------------------------------------------------
+
+  - name: "SSH brute force"
+    protocol: tcp
+    dst_port: 22
+    threshold:
+      count: 10
+      window: 60        # 10 connection attempts to port 22 within 60s
+      group_by: src_ip
+    severity: high
+    message: "Possible SSH brute force from {src_ip} ({count} attempts in {window}s)"
+
+  - name: "RDP brute force"
+    protocol: tcp
+    dst_port: 3389
+    threshold:
+      count: 10
+      window: 60
+      group_by: src_ip
+    severity: high
+    message: "Possible RDP brute force from {src_ip} ({count} attempts in {window}s)"
+
+  - name: "Telnet probe"
+    protocol: tcp
+    dst_port: 23
+    threshold:
+      count: 1
+      window: 60
+      group_by: src_ip
+    severity: medium
+    message: "Telnet connection attempt from {src_ip} to port 23"
+
+  - name: "HTTP flood"
+    protocol: tcp
+    dst_port: 80
+    threshold:
+      count: 200
+      window: 10
+      group_by: src_ip
+    severity: high
+    message: "HTTP flood from {src_ip} — {count} connections in {window}s"
+
+  - name: "HTTPS flood"
+    protocol: tcp
+    dst_port: 443
+    threshold:
+      count: 200
+      window: 10
+      group_by: src_ip
+    severity: high
+    message: "HTTPS flood from {src_ip} — {count} connections in {window}s"
+
+  - name: "Database probe (MySQL)"
+    protocol: tcp
+    dst_port: 3306
+    threshold:
+      count: 5
+      window: 60
+      group_by: src_ip
+    severity: medium
+    message: "MySQL port probed by {src_ip} ({count} times in {window}s)"
+
+  - name: "Database probe (PostgreSQL)"
+    protocol: tcp
+    dst_port: 5432
+    threshold:
+      count: 5
+      window: 60
+      group_by: src_ip
+    severity: medium
+    message: "PostgreSQL port probed by {src_ip} ({count} times in {window}s)"
+
+  - name: "SMB probe"
+    protocol: tcp
+    dst_port: 445
+    threshold:
+      count: 3
+      window: 30
+      group_by: src_ip
+    severity: medium
+    message: "SMB port 445 probed by {src_ip} ({count} times in {window}s)"
+
+  # -----------------------------------------------------------------------
+  # UDP rules
+  # -----------------------------------------------------------------------
+
+  - name: "DNS amplification"
+    protocol: udp
+    src_port: 53
+    threshold:
+      count: 50
+      window: 10
+      group_by: src_ip
+    severity: critical
+    message: "DNS amplification attack suspected from {src_ip} ({count} DNS responses in {window}s)"
+
+  - name: "NTP amplification"
+    protocol: udp
+    src_port: 123
+    threshold:
+      count: 30
+      window: 10
+      group_by: src_ip
+    severity: critical
+    message: "NTP amplification attack suspected from {src_ip} ({count} NTP responses in {window}s)"
+
+  - name: "SSDP amplification"
+    protocol: udp
+    src_port: 1900
+    threshold:
+      count: 20
+      window: 10
+      group_by: src_ip
+    severity: high
+    message: "SSDP amplification suspected from {src_ip} ({count} packets in {window}s)"
