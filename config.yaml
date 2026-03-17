@@ -1,0 +1,21 @@
+interface: eth0          # network interface to capture on (override with -i flag)
+rules_file: rules/default.yaml
+log_file: logs/alerts.log
+
+thresholds:
+  port_scan:
+    ports: 15            # unique destination ports before alerting
+    window: 60           # seconds
+  syn_flood:
+    rate: 100            # SYN packets per second per source IP
+    window: 5            # sliding window size in seconds
+  arp_spoof:
+    enabled: true
+    cooldown: 10         # seconds before re-alerting same IP
+
+dashboard:
+  refresh_rate: 1        # seconds between screen redraws
+  show_top_talkers: 5    # number of top IPs to display
+
+alerts:
+  dedup_cooldown: 10     # seconds before re-logging same (src_ip, detection_type)
