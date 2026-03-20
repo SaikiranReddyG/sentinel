@@ -17,7 +17,7 @@ import time
 import yaml
 
 # codex-platform event bus
-sys.path.insert(0, os.path.expanduser('~/codex-workspace/codex-platform'))
+sys.path.insert(0, '/home/sai/codex-workspace/codex-platform')
 try:
     from codex_bus import CodexBus
     _HAS_BUS = True
@@ -167,7 +167,7 @@ def main() -> None:
                     alert_count += 1
                     dashboard.add_alert(alert)
                     if bus:
-                        bus.publish(alert.to_bus_dict())
+                        bus.publish_alert(alert.to_bus_dict())
                     if args.no_dashboard or args.verbose:
                         print(alert.format_log_line())
 
