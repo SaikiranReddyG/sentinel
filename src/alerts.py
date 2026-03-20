@@ -53,6 +53,16 @@ class Alert:
         ts = time.strftime('%H:%M:%S', time.localtime(self.timestamp))
         return f'{ts}  {self.severity.upper():8s}  {self.detection_type}  {self.message}'
 
+    def to_bus_dict(self) -> dict:
+        """Return a dict for publishing to the codex event bus."""
+        return {
+            'detection_type': self.detection_type,
+            'severity':       self.severity.lower(),
+            'src_ip':         self.src_ip,
+            'dst_ip':         self.dst_ip,
+            'message':        self.message,
+        }
+
 
 def dict_to_alert(d: dict) -> Alert:
     """Convert a raw alert dict (as returned by detectors / rules) to an Alert."""

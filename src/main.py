@@ -16,6 +16,14 @@ import sys
 import time
 import yaml
 
+# codex-platform event bus
+sys.path.insert(0, os.path.expanduser('~/codex-workspace/codex-platform'))
+try:
+    from codex_bus import CodexBus
+    _HAS_BUS = True
+except ImportError:
+    _HAS_BUS = False
+
 # Ensure the project root is on sys.path regardless of cwd
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
@@ -112,6 +120,16 @@ def main() -> None:
 
     dashboard = Dashboard(config, ifname=ifname)
 
+    # Connect to codex-platform event bus (optional — sentinel works without it)
+    bus = None
+    if _HAS_BUS:
+        try:
+            bus = CodexBus(source='sentinel')
+            bus.connect()
+        except Exception as e:
+            print(f'[sentinel] Bus connection failed: {e} — running without bus')
+            bus = None
+
     print(f'[sentinel] Starting on "{ifname}" — Ctrl+C to stop')
     sock = create_socket(ifname)
 
@@ -148,6 +166,8 @@ def main() -> None:
                 if logger.log(alert):
                     alert_count += 1
                     dashboard.add_alert(alert)
+                    if bus:
+                        bus.publish(alert.to_bus_dict())
                     if args.no_dashboard or args.verbose:
                         print(alert.format_log_line())
 
@@ -157,6 +177,8 @@ def main() -> None:
     except KeyboardInterrupt:
         print('\n[sentinel] Shutting down...')
     finally:
+        if bus:
+            bus.disconnect()
         dashboard.stop()
         close_socket(sock, ifname)
         _print_summary(start_time, total, alert_count)
