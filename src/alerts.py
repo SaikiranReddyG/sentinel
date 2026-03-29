@@ -2,7 +2,6 @@
 alerts.py — Alert data model, structured log writer, and deduplication.
 
 Alert format logged to disk:
-  [2026-03-17 14:32:07] CRITICAL | SYN_FLOOD | 10.0.0.5 → 192.168.1.10 | message
 
 Severity levels (lowest → highest):
   low  medium  high  critical

@@ -166,7 +166,7 @@ What it does:
 State it keeps:
 ```
 connections = {
-    '192.168.1.50': {
+    '192...': {
         'ports': {22, 80, 443, 8080, 3306},
         'first_seen': 1710500000.0,
         'scan_type': 'SYN'
@@ -185,7 +185,7 @@ What it does:
 State it keeps:
 ```
 syn_counts = {
-    '10.0.0.5': {
+    '10...': {
         'count': 347,
         'window_start': 1710500000.0
     }
@@ -203,7 +203,7 @@ What it does:
 State it keeps:
 ```
 arp_table = {
-    '192.168.1.1': {
+    '192...': {
         'mac': 'aa:bb:cc:dd:ee:ff',
         'first_seen': 1710500000.0,
         'reply_count': 3

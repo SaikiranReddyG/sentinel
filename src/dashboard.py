@@ -1,30 +1,5 @@
 """
 dashboard.py — Live terminal dashboard using curses.
-
-Layout (terminal rows top-to-bottom):
-  ┌─────────────────────────────────────────────────────────────────┐
-  │ SENTINEL IDS  │  Interface: eth0  │  Uptime: 00:01:23          │  row 0
-  ├─────────────────────────────────────────────────────────────────┤
-  │ Packets: 12345  │  Rate: 47/s  │  TCP: 8012  UDP: 3211  ARP: 22 │  row 2
-  ├──────────────────┬──────────────────────────────────────────────┤
-  │ TOP TALKERS      │  ALERTS (newest first)                       │  row 4
-  │ 10.0.0.5  4321   │  14:32:07  CRITICAL  SYN_FLOOD  ...          │  rows 5+
-  │ 192.168.1.2 201  │  ...                                         │
-  │ ...              │                                              │
-  └──────────────────┴──────────────────────────────────────────────┘
-
-The dashboard updates at config.dashboard.refresh_rate seconds.
-
-Curses color pair assignments:
-  1  White on black   — normal text
-  2  Cyan on black    — header / labels
-  3  Green on black   — low-severity alerts and counters
-  4  Yellow on black  — medium / high alerts
-  5  Red on black     — critical alerts
-  6  Black on cyan    — header bar background
-
-Falls back gracefully to no-color output if the terminal does not support
-colors (e.g. piped output).
 """
 
 import curses
