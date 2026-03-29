@@ -34,6 +34,21 @@ pip install pytest
 python3 -m pytest tests/ -v
 ```
 
+### Optional: local .env overrides
+
+Use environment overrides for machine-specific values (for example local paths)
+without hardcoding them in source.
+
+```bash
+cp .env.example .env
+# Edit .env for your machine
+```
+
+Supported variables:
+- `CODEX_PLATFORM_PATH` (default `../codex-platform`)
+- `SENTINEL_CONFIG` (default `config.yaml`)
+- `SENTINEL_INTERFACE` (default from config, fallback `eth0`)
+
 ## Architecture
 
 ```

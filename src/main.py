@@ -11,23 +11,57 @@ Usage:
 """
 
 import argparse
+import importlib
 import os
 import sys
 import time
 import yaml
 
-# codex-platform event bus
-sys.path.insert(0, '/home/sai/codex-workspace/codex-platform')
-try:
-    from codex_bus import CodexBus
-    _HAS_BUS = True
-except ImportError:
-    _HAS_BUS = False
-
 # Ensure the project root is on sys.path regardless of cwd
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
+
+
+def _load_dotenv(path: str) -> None:
+    """Load simple KEY=VALUE pairs from a local .env file if present."""
+    if not os.path.isfile(path):
+        return
+    with open(path, 'r', encoding='utf-8') as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+# Load optional local environment overrides from sentinel/.env.
+_ENV_FILE = os.path.join(_ROOT, '.env')
+_load_dotenv(_ENV_FILE)
+
+# codex-platform event bus import path (env override + portable default)
+_DEFAULT_CODEX_PLATFORM_PATH = os.path.normpath(os.path.join(_ROOT, '..', 'codex-platform'))
+_CODEX_PLATFORM_PATH = os.getenv('CODEX_PLATFORM_PATH', _DEFAULT_CODEX_PLATFORM_PATH)
+if not os.path.isabs(_CODEX_PLATFORM_PATH):
+    _CODEX_PLATFORM_PATH = os.path.normpath(os.path.join(_ROOT, _CODEX_PLATFORM_PATH))
+
+_HAS_BUS = False
+_BUS_DISABLED_REASON = None
+CodexBus = None
+if os.path.isdir(_CODEX_PLATFORM_PATH):
+    if _CODEX_PLATFORM_PATH not in sys.path:
+        sys.path.insert(0, _CODEX_PLATFORM_PATH)
+    try:
+        CodexBus = importlib.import_module('codex_bus').CodexBus
+        _HAS_BUS = True
+    except Exception as e:
+        _BUS_DISABLED_REASON = f'codex_bus import failed: {e}'
+else:
+    _BUS_DISABLED_REASON = f'codex-platform path not found: {_CODEX_PLATFORM_PATH}'
 
 from src.capture import create_socket, close_socket
 from src.parsers.packet import parse_packet
@@ -50,11 +84,12 @@ def load_config(path: str) -> dict:
 
 
 def parse_args() -> argparse.Namespace:
+    default_config = os.getenv('SENTINEL_CONFIG', 'config.yaml')
     p = argparse.ArgumentParser(
         description='Sentinel — Network Intrusion Detection System',
     )
     p.add_argument('-i', '--interface', help='Network interface (e.g. eth0)')
-    p.add_argument('-c', '--config', default='config.yaml',
+    p.add_argument('-c', '--config', default=default_config,
                    help='Path to config.yaml (default: config.yaml)')
     p.add_argument('-v', '--verbose', action='store_true',
                    help='Print raw hex bytes for every packet')
@@ -101,7 +136,7 @@ def main() -> None:
     config = load_config(args.config)
 
     # CLI -i overrides config file
-    ifname = args.interface or config.get('interface', 'eth0')
+    ifname = args.interface or os.getenv('SENTINEL_INTERFACE') or config.get('interface', 'eth0')
 
     # --- Build the pipeline ---
     rules_file = config.get('rules_file', 'rules/default.yaml')
@@ -122,6 +157,8 @@ def main() -> None:
 
     # Connect to codex-platform event bus (optional — sentinel works without it)
     bus = None
+    if not _HAS_BUS and _BUS_DISABLED_REASON:
+        print(f'[sentinel] Bus disabled: {_BUS_DISABLED_REASON}')
     if _HAS_BUS:
         try:
             bus = CodexBus(source='sentinel')
