@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import errno
 import importlib
 import os
 import sys
@@ -168,7 +169,7 @@ def main() -> None:
             bus = None
 
     print(f'[sentinel] Starting on "{ifname}" — Ctrl+C to stop')
-    sock = create_socket(ifname)
+    sock = None
 
     if not args.no_dashboard:
         dashboard.start()
@@ -177,9 +178,37 @@ def main() -> None:
     total       = 0
     alert_count = 0
 
+    recoverable_errnos = {
+        errno.ENETDOWN,
+        errno.ENODEV,
+        errno.ENXIO,
+        100,  # ENETUNREACH — network interface deleted/recreated (bridge teardown)
+    }
+
     try:
         while True:
-            raw_bytes, _ = sock.recvfrom(65535)
+            if sock is None:
+                try:
+                    sock = create_socket(ifname)
+                    print(f'[sentinel] Socket bound to "{ifname}"')
+                except OSError as e:
+                    if e.errno in recoverable_errnos:
+                        print(f'[sentinel] Interface "{ifname}" unavailable ({e}); retrying in 5s...')
+                        time.sleep(5)
+                        continue
+                    raise
+
+            try:
+                raw_bytes, _ = sock.recvfrom(65535)
+            except OSError as e:
+                if e.errno in recoverable_errnos:
+                    print(f'[sentinel] Interface "{ifname}" lost ({e}); reconnecting in 5s...')
+                    close_socket(sock, ifname)
+                    sock = None
+                    time.sleep(5)
+                    continue
+                raise
+
             total += 1
 
             if args.verbose:
@@ -217,7 +246,8 @@ def main() -> None:
         if bus:
             bus.disconnect()
         dashboard.stop()
-        close_socket(sock, ifname)
+        if sock is not None:
+            close_socket(sock, ifname)
         _print_summary(start_time, total, alert_count)
 
 
