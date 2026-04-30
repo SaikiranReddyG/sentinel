@@ -1,1 +1,4 @@
-# sentinel source package
+"""Sentinel IDS package."""
+
+__version__ = "0.1.0"
+
