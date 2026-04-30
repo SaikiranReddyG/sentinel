@@ -42,19 +42,7 @@ def load_config(path: str) -> dict:
     return cfg
 
 
-def parse_args() -> argparse.Namespace:
-    default_config = os.getenv('SENTINEL_CONFIG', 'config.yaml')
-    p = argparse.ArgumentParser(
-        description='Sentinel — Network Intrusion Detection System',
-    )
-    p.add_argument('-i', '--interface', help='Network interface (e.g. eth0)')
-    p.add_argument('-c', '--config', default=default_config,
-                   help='Path to config.yaml (default: config.yaml)')
-    p.add_argument('-v', '--verbose', action='store_true',
-                   help='Print raw hex bytes for every packet')
-    p.add_argument('--no-dashboard', action='store_true',
-                   help='Disable the curses dashboard (plain text output)')
-    return p.parse_args()
+
 
 
 # ---------------------------------------------------------------------------
@@ -90,34 +78,48 @@ def _print_summary(start: float, total: int, alert_count: int) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    args   = parse_args()
-    config = load_config(args.config)
+def run_sentinel(
+    interface=None,
+    config='config.yaml',
+    verbose=False,
+    no_dashboard=False,
+    **kwargs
+) -> None:
+    """
+    Run the Sentinel IDS pipeline.
+    
+    Args:
+        interface: Network interface name (e.g., 'eth0'). Overrides config file.
+        config: Path to config.yaml file.
+        verbose: Print raw hex bytes for every packet.
+        no_dashboard: Disable the curses dashboard (plain text output).
+    """
+    cfg = load_config(config)
 
-    # CLI -i overrides config file
-    ifname = args.interface or os.getenv('SENTINEL_INTERFACE') or config.get('interface', 'eth0')
+    # CLI interface overrides config file
+    ifname = interface or os.getenv('SENTINEL_INTERFACE') or cfg.get('interface', 'eth0')
 
     # --- Build the pipeline ---
-    rules_file = config.get('rules_file', 'rules/default.yaml')
-    log_file   = config.get('log_file',   'logs/alerts.log')
-    cooldown   = float(config.get('alerts', {}).get('dedup_cooldown', 10.0))
+    rules_file = cfg.get('rules_file', 'rules/default.yaml')
+    log_file   = cfg.get('log_file',   'logs/alerts.log')
+    cooldown   = float(cfg.get('alerts', {}).get('dedup_cooldown', 10.0))
 
     rules   = load_rules(rules_file)
     matcher = RulesMatcher(rules)
     logger  = AlertLogger(log_file, cooldown=cooldown)
 
     detectors = [
-        PortScanDetector(config),
-        SynFloodDetector(config),
-        ArpSpoofDetector(config),
+        PortScanDetector(cfg),
+        SynFloodDetector(cfg),
+        ArpSpoofDetector(cfg),
     ]
 
-    dashboard = Dashboard(config, ifname=ifname)
+    dashboard = Dashboard(cfg, ifname=ifname)
 
     print(f'[sentinel] Starting on "{ifname}" — Ctrl+C to stop')
     sock = None
 
-    if not args.no_dashboard:
+    if not no_dashboard:
         dashboard.start()
 
     start_time  = time.time()
@@ -157,7 +159,7 @@ def main() -> None:
 
             total += 1
 
-            if args.verbose:
+            if verbose:
                 print(f'--- packet #{total} ({len(raw_bytes)} bytes) ---')
                 print_hex(raw_bytes)
 
@@ -178,7 +180,7 @@ def main() -> None:
                 if logger.log(alert):
                     alert_count += 1
                     dashboard.add_alert(alert)
-                    if args.no_dashboard or args.verbose:
+                    if no_dashboard or verbose:
                         print(alert.format_log_line())
 
             # Update dashboard counters
@@ -187,11 +189,39 @@ def main() -> None:
     except KeyboardInterrupt:
         print('\n[sentinel] Shutting down...')
     finally:
-        dashboard.stop()
-        if sock is not None:
-            close_socket(sock, ifname)
-        _print_summary(start_time, total, alert_count)
+        try:
+            dashboard.stop()
+        except Exception:
+            pass
+        try:
+            if sock is not None:
+                close_socket(sock, ifname)
+        except Exception:
+            pass
+        try:
+            _print_summary(start_time, total, alert_count)
+        except Exception:
+            pass
 
 
 if __name__ == '__main__':
-    main()
+    # Backward-compat argparse shim: parse CLI args and call run_sentinel()
+    default_config = os.getenv('SENTINEL_CONFIG', 'config.yaml')
+    parser = argparse.ArgumentParser(
+        description='Sentinel — Network Intrusion Detection System',
+    )
+    parser.add_argument('-i', '--interface', help='Network interface (e.g. eth0)')
+    parser.add_argument('-c', '--config', default=default_config,
+                        help='Path to config.yaml (default: config.yaml)')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Print raw hex bytes for every packet')
+    parser.add_argument('--no-dashboard', action='store_true',
+                        help='Disable the curses dashboard (plain text output)')
+    args = parser.parse_args()
+    
+    run_sentinel(
+        interface=args.interface,
+        config=args.config,
+        verbose=args.verbose,
+        no_dashboard=args.no_dashboard,
+    )
