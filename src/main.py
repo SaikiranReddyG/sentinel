@@ -30,6 +30,8 @@ from src.detection.arp_spoof import ArpSpoofDetector
 from src.rules import load_rules, RulesMatcher
 from src.alerts import Alert, AlertLogger, dict_to_alert
 from src.dashboard import Dashboard
+from src.events import emit_event, set_output
+from src.output import make_output
 
 
 # ---------------------------------------------------------------------------
@@ -80,21 +82,25 @@ def _print_summary(start: float, total: int, alert_count: int) -> None:
 
 def run_sentinel(
     interface=None,
-    config='config.yaml',
+    config_path='config.yaml',
     verbose=False,
     no_dashboard=False,
-    **kwargs
+    output_spec='stdout',
+    output_url=None,
+    output_file=None,
 ) -> None:
     """
     Run the Sentinel IDS pipeline.
     
     Args:
         interface: Network interface name (e.g., 'eth0'). Overrides config file.
-        config: Path to config.yaml file.
+        config_path: Path to config.yaml file.
         verbose: Print raw hex bytes for every packet.
         no_dashboard: Disable the curses dashboard (plain text output).
     """
-    cfg = load_config(config)
+    set_output(make_output(output_spec, url=output_url, path=output_file))
+
+    cfg = load_config(config_path)
 
     # CLI interface overrides config file
     ifname = interface or os.getenv('SENTINEL_INTERFACE') or cfg.get('interface', 'eth0')
@@ -118,6 +124,7 @@ def run_sentinel(
 
     print(f'[sentinel] Starting on "{ifname}" — Ctrl+C to stop')
     sock = None
+    lifecycle_started_emitted = False
 
     if not no_dashboard:
         dashboard.start()
@@ -139,6 +146,16 @@ def run_sentinel(
                 try:
                     sock = create_socket(ifname)
                     print(f'[sentinel] Socket bound to "{ifname}"')
+                    if not lifecycle_started_emitted:
+                        emit_event(
+                            'sentinel.lifecycle.started',
+                            'info',
+                            {
+                                'interface': ifname,
+                                'pid': os.getpid(),
+                            },
+                        )
+                        lifecycle_started_emitted = True
                 except OSError as e:
                     if e.errno in recoverable_errnos:
                         print(f'[sentinel] Interface "{ifname}" unavailable ({e}); retrying in 5s...')
@@ -180,6 +197,11 @@ def run_sentinel(
                 if logger.log(alert):
                     alert_count += 1
                     dashboard.add_alert(alert)
+                    emit_event(
+                        'sentinel.alert',
+                        alert.severity,
+                        alert.to_bus_dict(),
+                    )
                     if no_dashboard or verbose:
                         print(alert.format_log_line())
 
@@ -189,6 +211,19 @@ def run_sentinel(
     except KeyboardInterrupt:
         print('\n[sentinel] Shutting down...')
     finally:
+        try:
+            emit_event(
+                'sentinel.lifecycle.stopped',
+                'info',
+                {
+                    'interface': ifname,
+                    'pid': os.getpid(),
+                    'packets': total,
+                    'alerts': alert_count,
+                },
+            )
+        except Exception:
+            pass
         try:
             dashboard.stop()
         except Exception:
@@ -217,11 +252,20 @@ if __name__ == '__main__':
                         help='Print raw hex bytes for every packet')
     parser.add_argument('--no-dashboard', action='store_true',
                         help='Disable the curses dashboard (plain text output)')
+    parser.add_argument('--output', choices=['stdout', 'file', 'http_post'],
+                        default='stdout', help='Where to emit codex-contract events')
+    parser.add_argument('--output-url', default=None,
+                        help='URL for http_post output')
+    parser.add_argument('--output-file', default=None,
+                        help='File path for file output')
     args = parser.parse_args()
     
     run_sentinel(
         interface=args.interface,
-        config=args.config,
+        config_path=args.config,
         verbose=args.verbose,
         no_dashboard=args.no_dashboard,
+        output_spec=args.output,
+        output_url=args.output_url,
+        output_file=args.output_file,
     )
