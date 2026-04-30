@@ -12,7 +12,6 @@ Usage:
 
 import argparse
 import errno
-import importlib
 import os
 import sys
 import time
@@ -22,47 +21,6 @@ import yaml
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
-
-
-def _load_dotenv(path: str) -> None:
-    """Load simple KEY=VALUE pairs from a local .env file if present."""
-    if not os.path.isfile(path):
-        return
-    with open(path, 'r', encoding='utf-8') as fh:
-        for raw in fh:
-            line = raw.strip()
-            if not line or line.startswith('#') or '=' not in line:
-                continue
-            key, value = line.split('=', 1)
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            if key and key not in os.environ:
-                os.environ[key] = value
-
-
-# Load optional local environment overrides from sentinel/.env.
-_ENV_FILE = os.path.join(_ROOT, '.env')
-_load_dotenv(_ENV_FILE)
-
-# codex-platform event bus import path (env override + portable default)
-_DEFAULT_CODEX_PLATFORM_PATH = os.path.normpath(os.path.join(_ROOT, '..', 'codex-platform'))
-_CODEX_PLATFORM_PATH = os.getenv('CODEX_PLATFORM_PATH', _DEFAULT_CODEX_PLATFORM_PATH)
-if not os.path.isabs(_CODEX_PLATFORM_PATH):
-    _CODEX_PLATFORM_PATH = os.path.normpath(os.path.join(_ROOT, _CODEX_PLATFORM_PATH))
-
-_HAS_BUS = False
-_BUS_DISABLED_REASON = None
-CodexBus = None
-if os.path.isdir(_CODEX_PLATFORM_PATH):
-    if _CODEX_PLATFORM_PATH not in sys.path:
-        sys.path.insert(0, _CODEX_PLATFORM_PATH)
-    try:
-        CodexBus = importlib.import_module('codex_bus').CodexBus
-        _HAS_BUS = True
-    except Exception as e:
-        _BUS_DISABLED_REASON = f'codex_bus import failed: {e}'
-else:
-    _BUS_DISABLED_REASON = f'codex-platform path not found: {_CODEX_PLATFORM_PATH}'
 
 from src.capture import create_socket, close_socket
 from src.parsers.packet import parse_packet
@@ -156,18 +114,6 @@ def main() -> None:
 
     dashboard = Dashboard(config, ifname=ifname)
 
-    # Connect to codex-platform event bus (optional — sentinel works without it)
-    bus = None
-    if not _HAS_BUS and _BUS_DISABLED_REASON:
-        print(f'[sentinel] Bus disabled: {_BUS_DISABLED_REASON}')
-    if _HAS_BUS:
-        try:
-            bus = CodexBus(source='sentinel')
-            bus.connect()
-        except Exception as e:
-            print(f'[sentinel] Bus connection failed: {e} — running without bus')
-            bus = None
-
     print(f'[sentinel] Starting on "{ifname}" — Ctrl+C to stop')
     sock = None
 
@@ -232,8 +178,6 @@ def main() -> None:
                 if logger.log(alert):
                     alert_count += 1
                     dashboard.add_alert(alert)
-                    if bus:
-                        bus.publish_alert(alert.to_bus_dict())
                     if args.no_dashboard or args.verbose:
                         print(alert.format_log_line())
 
@@ -243,8 +187,6 @@ def main() -> None:
     except KeyboardInterrupt:
         print('\n[sentinel] Shutting down...')
     finally:
-        if bus:
-            bus.disconnect()
         dashboard.stop()
         if sock is not None:
             close_socket(sock, ifname)
