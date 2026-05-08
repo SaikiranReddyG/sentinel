@@ -154,6 +154,8 @@ class Dashboard:
         ).ljust(max_cols - 1)
         self._addstr(stdscr, 0, 0, header, C(2) | curses.A_BOLD, max_cols)
 
+        self._addstr(stdscr, 1, 0, '─' * (max_cols - 1), C(2), max_cols)
+
         # Row 2 — stats
         tcp = proto_counts.get('TCP', 0)
         udp = proto_counts.get('UDP', 0)
@@ -170,6 +172,8 @@ class Dashboard:
         right_start = left_width + 1
         right_width = max_cols - right_start - 1
         content_rows = max_rows - 6   # rows available below header (row 4+)
+
+        self._addstr(stdscr, 3, 0, '─' * (max_cols - 1), C(2), max_cols)
 
         # Row 4 — section labels
         self._addstr(stdscr, 4, 0,            f' TOP TALKERS',       C(2) | curses.A_BOLD, left_width)
