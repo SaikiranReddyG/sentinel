@@ -30,26 +30,13 @@ _ALERT_COOLDOWN = 10.0   # seconds between re-alerting same IP
 
 
 class ArpSpoofDetector:
-    """
-    Stateful ARP spoofing detector.
-
-    Parameters
-    ----------
-    config : dict
-        Expects config['thresholds']['arp_spoof'] with key:
-            enabled  (bool)
-            cooldown (int, seconds)
-    """
+    """Stateful ARP spoofing detector."""
 
     def __init__(self, config: dict) -> None:
         cfg = config.get('thresholds', {}).get('arp_spoof', {})
         self._enabled  = bool(cfg.get('enabled', True))
         self._cooldown = float(cfg.get('cooldown', _ALERT_COOLDOWN))
         self._arp_table: dict = {}
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def check(self, packet: dict) -> list:
         if not self._enabled:
@@ -71,7 +58,6 @@ class ArpSpoofDetector:
         existing = self._arp_table.get(sender_ip)
 
         if existing is None:
-            # First time we see this IP — just record it
             self._arp_table[sender_ip] = {
                 'mac'        : sender_mac,
                 'first_seen' : now,
@@ -103,10 +89,6 @@ class ArpSpoofDetector:
                 existing['mac'] = sender_mac  # update to latest
 
         return alerts
-
-    # ------------------------------------------------------------------
-    # Introspection (used by dashboard / tests)
-    # ------------------------------------------------------------------
 
     def get_arp_table(self) -> dict:
         """Return a copy of the current ARP table."""

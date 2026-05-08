@@ -51,7 +51,6 @@ def create_socket(ifname: str) -> socket.socket:
     Returns the open socket — caller is responsible for closing it.
     Raises PermissionError if not running as root / without CAP_NET_RAW.
     """
-    # ETH_P_ALL = 0x0003 — capture every protocol
     ETH_P_ALL = 0x0003
     try:
         sock = socket.socket(

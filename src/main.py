@@ -33,23 +33,12 @@ from src.dashboard import Dashboard
 from src.events import emit_event, set_output
 from src.output import make_output
 
-
-# ---------------------------------------------------------------------------
-# Config helpers
-# ---------------------------------------------------------------------------
-
 def load_config(path: str) -> dict:
     with open(path, 'r') as fh:
         cfg = yaml.safe_load(fh)
     return cfg
 
 
-
-
-
-# ---------------------------------------------------------------------------
-# Hex dump helper (used in verbose mode)
-# ---------------------------------------------------------------------------
 
 def print_hex(raw: bytes) -> None:
     for i in range(0, len(raw), 16):
@@ -58,12 +47,6 @@ def print_hex(raw: bytes) -> None:
         ascii_part = ''.join(chr(b) if 32 <= b < 127 else '.' for b in chunk)
         print(f'  {i:04x}  {hex_part}  {ascii_part}')
     print()
-
-
-# ---------------------------------------------------------------------------
-# Shutdown summary
-# ---------------------------------------------------------------------------
-
 def _print_summary(start: float, total: int, alert_count: int) -> None:
     elapsed = time.time() - start
     pps     = total / elapsed if elapsed > 0 else 0
@@ -74,12 +57,6 @@ def _print_summary(start: float, total: int, alert_count: int) -> None:
         f'  Rate      : {pps:.1f} pkt/s\n'
         f'  Alerts    : {alert_count}\n'
     )
-
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
-
 def run_sentinel(
     interface=None,
     config_path='config.yaml',
@@ -180,18 +157,15 @@ def run_sentinel(
                 print(f'--- packet #{total} ({len(raw_bytes)} bytes) ---')
                 print_hex(raw_bytes)
 
-            # Parse all protocol layers into one dict
             packet = parse_packet(raw_bytes)
             if packet is None:
                 continue
 
-            # Run all detectors + rules matcher
             raw_alerts = []
             for detector in detectors:
                 raw_alerts.extend(detector.check(packet))
             raw_alerts.extend(matcher.match(packet))
 
-            # Convert, log, and display each alert
             for raw in raw_alerts:
                 alert = dict_to_alert(raw)
                 if logger.log(alert):
@@ -205,7 +179,6 @@ def run_sentinel(
                     if no_dashboard or verbose:
                         print(alert.format_log_line())
 
-            # Update dashboard counters
             dashboard.update(packet)
 
     except KeyboardInterrupt:
@@ -259,7 +232,7 @@ if __name__ == '__main__':
     parser.add_argument('--output-file', default=None,
                         help='File path for file output')
     args = parser.parse_args()
-    
+
     run_sentinel(
         interface=args.interface,
         config_path=args.config,

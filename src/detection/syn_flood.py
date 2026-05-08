@@ -31,26 +31,13 @@ _ALERT_COOLDOWN = 5.0   # seconds between consecutive alerts for same source
 
 
 class SynFloodDetector:
-    """
-    Stateful SYN flood detector.
-
-    Parameters
-    ----------
-    config : dict
-        Expects config['thresholds']['syn_flood'] with keys:
-            rate   (int) — SYN packets per second threshold
-            window (int) — counting window size in seconds
-    """
+    """Stateful SYN flood detector."""
 
     def __init__(self, config: dict) -> None:
         cfg = config.get('thresholds', {}).get('syn_flood', {})
         self._rate   = int(cfg.get('rate',    100))
         self._window = int(cfg.get('window',    5))
         self._counts: dict = {}
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def check(self, packet: dict) -> list:
         """
@@ -62,7 +49,6 @@ class SynFloodDetector:
 
         flags = packet.get('tcp_flags', 0)
 
-        # SYN-only: SYN set, ACK clear
         if not (flags & SYN) or (flags & ACK):
             return []
 
@@ -74,7 +60,6 @@ class SynFloodDetector:
         state = self._counts.get(src_ip)
 
         if state is None or now > state['window_start'] + self._window:
-            # Start a fresh window
             self._counts[src_ip] = {
                 'count'       : 1,
                 'window_start': now,
@@ -85,8 +70,6 @@ class SynFloodDetector:
         state['count'] += 1
         elapsed = now - state['window_start']
 
-        # Need at least `rate` packets AND measurable elapsed time before
-        # computing rate — avoids false positives from burst scheduling
         if state['count'] < self._rate or elapsed <= 0:
             return []
 
@@ -98,10 +81,6 @@ class SynFloodDetector:
             return [self._make_alert(src_ip, state, packet, current_rate, elapsed)]
 
         return []
-
-    # ------------------------------------------------------------------
-    # Helper
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _make_alert(src_ip, state, packet, rate, elapsed) -> dict:

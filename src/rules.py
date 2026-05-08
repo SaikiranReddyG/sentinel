@@ -26,11 +26,6 @@ import yaml
 from dataclasses import dataclass, field
 from typing import Optional
 
-
-# ---------------------------------------------------------------------------
-# Data model
-# ---------------------------------------------------------------------------
-
 @dataclass
 class Rule:
     name     : str
@@ -42,11 +37,6 @@ class Rule:
     threshold_count  : int   = 1
     threshold_window : int   = 60
     threshold_group  : str   = 'src_ip'
-
-
-# ---------------------------------------------------------------------------
-# Loader
-# ---------------------------------------------------------------------------
 
 def load_rules(path: str) -> list:
     """Parse *path* YAML and return a list of Rule objects."""
@@ -69,35 +59,15 @@ def load_rules(path: str) -> list:
         ))
     return rules
 
-
-# ---------------------------------------------------------------------------
-# Matcher
-# ---------------------------------------------------------------------------
-
 class RulesMatcher:
-    """
-    Matches parsed packet dicts against a list of Rule objects.
-
-    Each rule maintains its own per-group rate counters:
-        _counters[rule_name][group_key] = {'count': int, 'window_start': float}
-
-    Parameters
-    ----------
-    rules : list[Rule]
-    """
+    """Match parsed packets against thresholded rules."""
 
     def __init__(self, rules: list) -> None:
         self._rules    = rules
         self._counters: dict = {r.name: {} for r in rules}
 
     def match(self, packet: dict) -> list:
-        """
-        Check *packet* against all rules.
-
-        Returns
-        -------
-        List of alert dicts for every rule whose  threshold was crossed.
-        """
+        """Check *packet* against all rules and return alert dicts."""
         alerts = []
         proto  = packet.get('proto', '').upper()  # 'TCP', 'UDP', etc.
         now    = time.time()
@@ -109,7 +79,6 @@ class RulesMatcher:
             if not self._port_matches(rule, packet):
                 continue
 
-            # Determine grouping key value
             group_val = packet.get(
                 'ip_src' if rule.threshold_group == 'src_ip' else 'ip_dst',
                 'unknown'
@@ -126,14 +95,9 @@ class RulesMatcher:
                 counter['count'] += 1
 
             if counter['count'] == rule.threshold_count:
-                # Fire exactly once per window crossing
                 alerts.append(self._make_alert(rule, packet, counter))
 
         return alerts
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _port_matches(rule: Rule, packet: dict) -> bool:

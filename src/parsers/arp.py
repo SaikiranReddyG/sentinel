@@ -21,19 +21,14 @@ ARP spoofing indicators:
 import struct
 from typing import Optional
 
+from src.parsers.ethernet import mac_to_str
+from src.parsers.ip import ip_to_str
+
 OP_REQUEST = 1
 OP_REPLY   = 2
 
 _ARP_LEN = 28
 _FMT     = '!HHBBH6s4s6s4s'
-
-
-def _mac(b: bytes) -> str:
-    return ':'.join(f'{x:02x}' for x in b)
-
-
-def _ip(b: bytes) -> str:
-    return '.'.join(str(x) for x in b)
 
 
 def parse(raw: bytes) -> Optional[dict]:
@@ -71,16 +66,16 @@ def parse(raw: bytes) -> Optional[dict]:
     if htype != 1 or ptype != 0x0800 or hlen != 6 or plen != 4:
         return None
 
-    sender_ip = _ip(sender_ip_raw)
-    target_ip = _ip(target_ip_raw)
+    sender_ip = ip_to_str(sender_ip_raw)
+    target_ip = ip_to_str(target_ip_raw)
 
     return {
         'htype'        : htype,
         'ptype'        : ptype,
         'operation'    : operation,
-        'sender_mac'   : _mac(sender_mac_raw),
+        'sender_mac'   : mac_to_str(sender_mac_raw),
         'sender_ip'    : sender_ip,
-        'target_mac'   : _mac(target_mac_raw),
+        'target_mac'   : mac_to_str(target_mac_raw),
         'target_ip'    : target_ip,
         'is_gratuitous': sender_ip == target_ip,
     }

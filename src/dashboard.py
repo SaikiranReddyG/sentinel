@@ -56,10 +56,6 @@ class Dashboard:
         self._last_tick     = time.time()
         self._current_rate  = 0.0
 
-    # ------------------------------------------------------------------
-    # Public API (called from main packet loop — thread-safe)
-    # ------------------------------------------------------------------
-
     def update(self, packet: dict) -> None:
         """Record a parsed packet in the counters."""
         with self._lock:
@@ -75,10 +71,6 @@ class Dashboard:
         with self._lock:
             self._alerts.appendleft(alert)
 
-    # ------------------------------------------------------------------
-    # Lifecycle
-    # ------------------------------------------------------------------
-
     def start(self) -> None:
         """Start the curses render loop in a background thread."""
         self._running = True
@@ -90,10 +82,6 @@ class Dashboard:
         self._running = False
         if self._thread:
             self._thread.join(timeout=2)
-
-    # ------------------------------------------------------------------
-    # Curses render loop (runs in background thread)
-    # ------------------------------------------------------------------
 
     def _run(self) -> None:
         try:
@@ -166,9 +154,6 @@ class Dashboard:
         ).ljust(max_cols - 1)
         self._addstr(stdscr, 0, 0, header, C(2) | curses.A_BOLD, max_cols)
 
-        # Row 1 — separator
-        self._addstr(stdscr, 1, 0, '─' * (max_cols - 1), C(2), max_cols)
-
         # Row 2 — stats
         tcp = proto_counts.get('TCP', 0)
         udp = proto_counts.get('UDP', 0)
@@ -179,9 +164,6 @@ class Dashboard:
             f'  TCP: {tcp:,}  UDP: {udp:,}  ARP: {arp:,}  ICMP: {icmp:,}'
         )
         self._addstr(stdscr, 2, 0, stats_line[:max_cols - 1], C(1), max_cols)
-
-        # Row 3 — separator
-        self._addstr(stdscr, 3, 0, '─' * (max_cols - 1), C(2), max_cols)
 
         # Split remaining area: left 28 cols for talkers, rest for alerts
         left_width  = min(30, max_cols // 3)

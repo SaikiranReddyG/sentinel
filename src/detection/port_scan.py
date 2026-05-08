@@ -26,26 +26,13 @@ from src.parsers.tcp import SYN, FIN, PSH, URG
 
 
 class PortScanDetector:
-    """
-    Stateful port scan detector.
-
-    Parameters
-    ----------
-    config : dict
-        Expects config['thresholds']['port_scan'] with keys:
-            ports  (int) — unique port threshold before alerting
-            window (int) — time window in seconds
-    """
+    """Stateful port scan detector."""
 
     def __init__(self, config: dict) -> None:
         cfg = config.get('thresholds', {}).get('port_scan', {})
         self._threshold = int(cfg.get('ports',  15))
         self._window    = int(cfg.get('window', 60))
         self._connections: dict = {}
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
 
     def check(self, packet: dict) -> list:
         """
@@ -80,7 +67,6 @@ class PortScanDetector:
 
         state['ports'].add(dst_port)
         state['last_seen'] = now
-        # Update scan type with whatever we see (keeps the latest)
         state['scan_type'] = scan
 
         if not state['alerted'] and len(state['ports']) >= self._threshold:
@@ -88,10 +74,6 @@ class PortScanDetector:
             return [self._make_alert(src_ip, state, packet)]
 
         return []
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _classify_scan(flags: int) -> Optional[str]:

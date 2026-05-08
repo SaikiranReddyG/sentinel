@@ -6,15 +6,7 @@ import json
 import time
 from pathlib import Path
 
-try:
-    import requests
-except Exception:  # pragma: no cover - optional dependency fallback
-    requests = None
-
-try:
-    from urllib import request as urllib_request
-except Exception:  # pragma: no cover - fallback should always exist
-    urllib_request = None
+import requests
 
 
 class StdoutOutput:
@@ -43,39 +35,19 @@ class HttpPostOutput:
         self._backoff = backoff
 
     def emit(self, event: dict) -> None:
-        body = json.dumps(event).encode('utf-8')
-        last_error = None
-
         for attempt in range(self._retries + 1):
             try:
-                if requests is not None:
-                    response = requests.post(
-                        self._url,
-                        json=event,
-                        timeout=5,
-                    )
-                    response.raise_for_status()
-                    return
-
-                if urllib_request is None:
-                    raise RuntimeError('no HTTP client available')
-
-                req = urllib_request.Request(
+                response = requests.post(
                     self._url,
-                    data=body,
-                    headers={'Content-Type': 'application/json'},
-                    method='POST',
+                    json=event,
+                    timeout=5,
                 )
-                with urllib_request.urlopen(req, timeout=5):
-                    return
-            except Exception as exc:
-                last_error = exc
+                response.raise_for_status()
+                return
+            except Exception:
                 if attempt >= self._retries:
                     raise
                 time.sleep(self._backoff * (2 ** attempt))
-
-        if last_error is not None:
-            raise last_error
 
 
 def make_output(output_spec: str, url: str | None = None, path: str | None = None):

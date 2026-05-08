@@ -75,16 +75,7 @@ def dict_to_alert(d: dict) -> Alert:
 
 
 class AlertLogger:
-    """
-    Writes alerts to a log file and enforces deduplication.
-
-    Parameters
-    ----------
-    log_file : str
-        Path to the alert log file (will be created / appended to).
-    cooldown : float
-        Seconds to suppress re-logging the same (src_ip, detection_type) pair.
-    """
+    """Write alerts to a log file with cooldown-based deduplication."""
 
     def __init__(self, log_file: str, cooldown: float = 10.0) -> None:
         self._log_file = log_file
