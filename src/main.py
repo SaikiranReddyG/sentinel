@@ -65,6 +65,7 @@ def run_sentinel(
     output_spec='stdout',
     output_url=None,
     output_file=None,
+    auth_header=None,
 ) -> None:
     """
     Run the Sentinel IDS pipeline.
@@ -74,8 +75,9 @@ def run_sentinel(
         config_path: Path to config.yaml file.
         verbose: Print raw hex bytes for every packet.
         no_dashboard: Disable the curses dashboard (plain text output).
+        auth_header: Optional authorization header for HTTP output.
     """
-    set_output(make_output(output_spec, url=output_url, path=output_file))
+    set_output(make_output(output_spec, url=output_url, path=output_file, auth_header=auth_header))
 
     cfg = load_config(config_path)
 
