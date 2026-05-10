@@ -29,17 +29,22 @@ class FileOutput:
 
 
 class HttpPostOutput:
-    def __init__(self, url: str, retries: int = 3, backoff: float = 0.5) -> None:
+    def __init__(self, url: str, retries: int = 3, backoff: float = 0.5, auth_header: str | None = None) -> None:
         self._url = url
         self._retries = retries
         self._backoff = backoff
+        self._auth_header = auth_header
 
     def emit(self, event: dict) -> None:
+        headers = {}
+        if self._auth_header:
+            headers['Authorization'] = self._auth_header.replace('Authorization: ', '', 1).strip()
         for attempt in range(self._retries + 1):
             try:
                 response = requests.post(
                     self._url,
                     json=event,
+                    headers=headers if headers else None,
                     timeout=5,
                 )
                 response.raise_for_status()
@@ -50,7 +55,7 @@ class HttpPostOutput:
                 time.sleep(self._backoff * (2 ** attempt))
 
 
-def make_output(output_spec: str, url: str | None = None, path: str | None = None):
+def make_output(output_spec: str, url: str | None = None, path: str | None = None, auth_header: str | None = None):
     if output_spec == 'stdout':
         return StdoutOutput()
     if output_spec == 'file':
@@ -60,5 +65,5 @@ def make_output(output_spec: str, url: str | None = None, path: str | None = Non
     if output_spec == 'http_post':
         if not url:
             raise ValueError('output-url is required for http_post output')
-        return HttpPostOutput(url)
+        return HttpPostOutput(url, auth_header=auth_header)
     raise ValueError(f'unknown output_spec: {output_spec}')

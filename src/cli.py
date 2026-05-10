@@ -48,7 +48,9 @@ def version():
               help="URL for http_post output.")
 @click.option("--output-file", default=None,
               help="File path for file output.")
-def run(interface, config, no_dashboard, verbose, output, output_url, output_file):
+@click.option("--auth-header", default=None,
+              help="Authorization header for http_post output (e.g. 'Authorization: Bearer token').")
+def run(interface, config, no_dashboard, verbose, output, output_url, output_file, auth_header):
     """Run sentinel against a network interface."""
     if os.geteuid() != 0:
         click.echo("[!] sentinel run requires root. Re-run with sudo.", err=True)
@@ -65,6 +67,7 @@ def run(interface, config, no_dashboard, verbose, output, output_url, output_fil
         output_spec=output,
         output_url=output_url,
         output_file=output_file,
+        auth_header=auth_header,
     )
 
 
