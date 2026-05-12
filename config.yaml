@@ -1,4 +1,7 @@
 interface: eth0          # network interface to capture on (override with -i flag)
+trusted_networks:
+  - 127.0.0.0/8
+  - 192.168.1.0/24
 rules_file: rules/default.yaml
 log_file: logs/alerts.log
 
