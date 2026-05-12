@@ -39,6 +39,10 @@ Sentinel supports three event sinks:
 - `file` appends JSONL events to a path on disk.
 - `http_post` posts each event individually to an HTTP endpoint with retry/backoff.
 
+## Trusted networks
+
+`trusted_networks` is optional. When configured, Sentinel silently suppresses any alert whose `src_ip` falls within one of the listed CIDR ranges before rule evaluation and before any alert event is emitted. If the setting is absent, no traffic is suppressed.
+
 ## What Sentinel is not
 
 Sentinel is not a persistent SIEM, not a packet recorder, not a general-purpose log shipper, and not an IPv6 IDS yet. It does not depend on an external message bus.

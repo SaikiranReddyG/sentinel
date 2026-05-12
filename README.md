@@ -46,6 +46,14 @@ Alert system
 
 Edit `config.yaml` to control the capture interface, detector thresholds, log file path, dashboard refresh rate, and alert deduplication cooldown. `SENTINEL_CONFIG` can point to an alternate config file, and `SENTINEL_INTERFACE` overrides the interface name at runtime.
 
+```yaml
+trusted_networks:
+    - 127.0.0.0/8
+    - 192.168.1.0/24
+```
+
+Use this for home labs and dev machines where legitimate traffic can cross alert thresholds but should not generate noise.
+
 ## Integration
 
 The runtime event contract is documented in [CONTRACT.md](CONTRACT.md). That file describes the event schema, the three event types Sentinel emits in v0.1, severity levels, and the supported output destinations.
