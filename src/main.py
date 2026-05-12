@@ -12,6 +12,7 @@ Usage:
 
 import argparse
 import errno
+import ipaddress
 import os
 import sys
 import time
@@ -37,6 +38,33 @@ def load_config(path: str) -> dict:
     with open(path, 'r') as fh:
         cfg = yaml.safe_load(fh)
     return cfg
+
+
+def parse_trusted_networks(config: dict) -> list:
+    """Parse configured trusted CIDR ranges into ipaddress network objects."""
+    trusted_networks = []
+    for cidr in config.get('trusted_networks', []) or []:
+        trusted_networks.append(ipaddress.ip_network(cidr, strict=False))
+    return trusted_networks
+
+
+def is_trusted_src_ip(src_ip: str, trusted_networks: list) -> bool:
+    """Return True when *src_ip* falls inside any trusted network."""
+    if not src_ip:
+        return False
+
+    try:
+        address = ipaddress.ip_address(src_ip)
+    except ValueError:
+        return False
+
+    for network in trusted_networks:
+        try:
+            if address in network:
+                return True
+        except TypeError:
+            continue
+    return False
 
 
 
@@ -80,6 +108,7 @@ def run_sentinel(
     set_output(make_output(output_spec, url=output_url, path=output_file, auth_header=auth_header))
 
     cfg = load_config(config_path)
+    trusted_networks = parse_trusted_networks(cfg)
 
     # CLI interface overrides config file
     ifname = interface or os.getenv('SENTINEL_INTERFACE') or cfg.get('interface', 'eth0')
@@ -170,6 +199,8 @@ def run_sentinel(
 
             for raw in raw_alerts:
                 alert = dict_to_alert(raw)
+                if is_trusted_src_ip(getattr(alert, 'src_ip', None), trusted_networks):
+                    continue
                 if logger.log(alert):
                     alert_count += 1
                     dashboard.add_alert(alert)
