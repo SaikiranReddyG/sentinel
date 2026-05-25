@@ -13,3 +13,4 @@ src/detection/__pycache__/
 dist/
 build/
 .venv/
+/config/pulse.yaml
