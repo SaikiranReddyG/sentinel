@@ -56,6 +56,16 @@ class HttpPostOutput:
 
 
 def make_output(output_spec: str, url: str | None = None, path: str | None = None, auth_header: str | None = None):
+    import os
+
+    # Env vars override config/CLI values
+    env_url = os.environ.get('PULSE_RECEIVER_URL')
+    env_auth = os.environ.get('PULSE_AUTH_HEADER')
+    if env_url:
+        url = env_url
+    if env_auth:
+        auth_header = env_auth
+
     if output_spec == 'stdout':
         return StdoutOutput()
     if output_spec == 'file':
